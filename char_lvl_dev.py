@@ -4,6 +4,8 @@ from tkinter import font as tkFont
 import csv
 import os
 
+# Global Variables
+CHARACTER_NAME = "Default"  # Character name
 # Initial multiplier value
 multiplier = 10
 
@@ -16,7 +18,6 @@ DEFAULT_CHAR_DATA = [
     ["FIRE", 1, 0, 10],
     ["BLACKSMITH", 1, 0, 10],
 ]
-
 
 # Function to calculate the new level and XP
 def calculate_level_and_xp(current_xp, current_level, gained_xp, multiplier):
@@ -128,10 +129,12 @@ def toggle_multiplier():
 
 # Load character data from CSV or use default data if the file doesn't exist
 def load_character_data(path="character_data.csv"):
+    global CHARACTER_NAME
     if os.path.exists(path):
         with open(path, mode="r") as file:
             reader = csv.reader(file)
             char_data = list(reader)
+            CHARACTER_NAME = char_data[0][0]  # Store the character name
             return char_data[2:]  # Skip header and name of the character
     else:
         char_data = DEFAULT_CHAR_DATA
@@ -179,8 +182,25 @@ def create_character_data():
             writer.writerow(
                 ["magic", "magic_level", "exp", "current_exp", "next_exp"]
             )  # Write header
+            writer.writerow([CHARACTER_NAME])  # Write character name
             writer.writerows(DEFAULT_CHAR_DATA)  # Write default character data
     return path
+
+def create_new_character_data():
+    global CHARACTER_NAME
+    CHARACTER_NAME = simpledialog.askstring("Character Name", "Enter Character Name:")
+    if CHARACTER_NAME:
+        # Prompt: create default file or edit default
+        if messagebox.askyesno("Create New Character Data", "Edit new character data?"):
+            path = create_character_data()
+            # Open edit window
+            edit_character_data()
+            if path:
+                refresh_ui()  # Refresh the UI to show the new character data
+        else:
+            messagebox.showerror("Error", "No file selected to save character data.")
+    else:
+        messagebox.showerror("Error", "Character name cannot be empty.")
 
 
 # Load magic data from CSV and create magic buttons dynamically
@@ -191,6 +211,8 @@ def create_magic_buttons():
     path = get_character_data_path()
 
     char_data = load_character_data(path)
+
+    character_name_label.config(text=f"{CHARACTER_NAME}") # Update character name label
 
     # Clear previous magic buttons, if any
     for button in magic_buttons:
@@ -258,7 +280,7 @@ def update_magic_data(index, new_level, new_xp, next_xp):
     char_data[index][3] = str(next_xp)  # Update next XP
 
     # Save back to the CSV file
-    save_character_data(char_data)
+    save_character_data(char_data, CHARACTER_NAME)
 
 
 # Function to refresh the UI to show updated magic buttons
@@ -277,8 +299,10 @@ def update_window_size():
     num_buttons = len(magic_buttons)
     button_height = 40  # Height of each button
     # Calculate total height (accounting for padding)
-    new_height = 600 if num_buttons == 0 else 120 + (num_buttons * button_height)
-    root.geometry(f"550x{new_height}")
+    new_height = 400 if num_buttons == 0 else 20 + (num_buttons * button_height)
+    if new_height < 400: # Minimum height
+        new_height = 400
+    root.geometry(f"425x{new_height}")
 
 
 # Edit Character Data button
@@ -330,16 +354,23 @@ fg_color = "#FFFFFF"
 # Custom font
 dnd_font = tkFont.Font(family="Helvetica", size=12)
 
-# Title label
-title_label = tk.Label(
-    root, text="D&D XP Calculator", bg=bg_color, fg=fg_color, font=dnd_font
-)
-title_label.pack(fill=tk.X)
+# # Title label
+# title_label = tk.Label(
+#     root, text="D&D XP Calculator", bg=bg_color, fg=fg_color, font=dnd_font
+# )
+# title_label.pack(fill=tk.X)
 
 # Main frame
 main_frame = tk.Frame(root, bg=bg_color)
 main_frame.pack(fill=tk.BOTH, expand=True)
 
+# Character name
+character_name_label = tk.Label(
+    main_frame, text=f"{CHARACTER_NAME}", bg=bg_color, fg=fg_color, font=dnd_font
+)
+character_name_label.grid(row=0, column=0, columnspan=1, pady=5)
+character_name_label.config(font=("Helvetica", 24))
+# Size of character name label is adjusted to fit the window
 # UI Setup
 
 # Labels and entries for XP calculations
