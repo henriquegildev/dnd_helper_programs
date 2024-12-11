@@ -6,6 +6,7 @@ import os
 
 # Global Variables
 CHARACTER_NAME = "Default"  # Character name
+SESSION_XP = 0  # Session XP
 # Initial multiplier value
 multiplier = 10
 
@@ -18,6 +19,7 @@ DEFAULT_CHAR_DATA = [
     ["FIRE", 1, 0, 10],
     ["BLACKSMITH", 1, 0, 10],
 ]
+
 
 # Function to calculate the new level and XP
 def calculate_level_and_xp(current_xp, current_level, gained_xp, multiplier):
@@ -64,6 +66,7 @@ def calculate():
 
     # Clear the gained XP entry
     gained_xp_entry.delete(0, tk.END)
+    gained_xp_entry.insert(0, str(0))
 
 
 # Function to save calculated XP to the selected magic
@@ -88,6 +91,11 @@ def save_calculated_xp():
 
         # Save the new level and XP for the selected magic
         update_magic_data(selected_magic_index, new_level, new_xp, next_xp)
+        if selected_magic_index == 0:
+            global SESSION_XP
+            SESSION_XP = SESSION_XP + int(last_xp_value.cget("text"))
+            session_xp_label.config(text=f"Session XP: {SESSION_XP}")
+
         messagebox.showinfo("Save Successful", "XP and Level saved successfully!")
     else:
         messagebox.showwarning(
@@ -110,6 +118,15 @@ def reset_fields():
         button.config(bg=button_color, state=tk.NORMAL)
 
 
+def reset_session_xp():
+    global SESSION_XP
+    # Pop up a confirmation dialog
+    if not messagebox.askyesno("Reset Session XP", "Reset the session XP?"):
+        return
+    SESSION_XP = 0
+    session_xp_label.config(text=f"Session XP: {SESSION_XP}")
+
+
 # Function to toggle the multiplier value
 def toggle_multiplier():
     global multiplier
@@ -127,45 +144,59 @@ def toggle_multiplier():
     multiplier_button.config(text=f"Multiplier: {multiplier}x")
 
 
-# Load character data from CSV or use default data if the file doesn't exist
-def load_character_data(path="character_data.csv"):
+def load_character_data(path=None, character_name=None):
+    """
+    Load character data from a CSV file based on the given character name.
+    """
     global CHARACTER_NAME
-    if os.path.exists(path):
-        with open(path, mode="r") as file:
+    global SESSION_XP
+    if character_name:
+        CHARACTER_NAME = character_name
+        file_path = f"character_data_{character_name}.csv"
+    elif path:
+        file_path = path
+    else:
+        file_path = "character_data_default.csv"  # Default file
+
+    if os.path.exists(file_path):
+        with open(file_path, mode="r") as file:
             reader = csv.reader(file)
             char_data = list(reader)
-            CHARACTER_NAME = char_data[0][0]  # Store the character name
-            return char_data[2:]  # Skip header and name of the character
+            CHARACTER_NAME = char_data[0][0]  # Get the character name from the data
+            SESSION_XP = char_data[0][1]  # Get the session XP from the data
+            return char_data[2:]  # Skip header and character name
     else:
-        char_data = DEFAULT_CHAR_DATA
-        save_character_data(char_data)  # Save default data to CSV
+        # If file doesn't exist, create default data
+        messagebox.showinfo(
+            "File Not Found",
+            f"No data found for {character_name}. Creating default character data.",
+        )
+        save_character_data(DEFAULT_CHAR_DATA, name=character_name)
         return DEFAULT_CHAR_DATA
 
 
+def load_char_list():
+    """
+    Return a list of character names based on available CSV files.
+    """
+    char_list = []
+    for file in os.listdir():
+        if file.startswith("character_data_") and file.endswith(".csv"):
+            char_name = file.replace("character_data_", "").replace(".csv", "")
+            char_list.append(char_name)
+    char_list.sort()  # Sort the list alphabetically
+    return char_list
+
+
 # Save character data to CSV
-def save_character_data(data, name="CHARACTER"):
-    with open("character_data.csv", mode="w", newline="") as file:
+def save_character_data(data, name=CHARACTER_NAME):
+    with open(f"character_data_{name}", mode="w", newline="") as file:
         writer = csv.writer(file)
-        writer.writerow([name])  # Write character name
+        writer.writerow([name, SESSION_XP])  # Write character name
         writer.writerow(
             ["magic", "magic_level", "exp", "current_exp", "next_exp"]
         )  # Write header
         writer.writerows(data)  # Write default or updated character data
-
-
-def get_character_data_path():
-    # Get the path to the character data file
-
-    # If more than one charecter_data[0-inf].csv file exists open the file dialog else use the existing the default
-    if len([file for file in os.listdir() if file.startswith("character_data")]) > 1:
-        path = filedialog.askopenfilename(
-            initialdir=os.getcwd(),
-            title="Select Character Data File",
-            filetypes=[("CSV Files", "*.csv")],
-        )
-    else:
-        path = "character_data.csv"
-    return path
 
 
 def create_character_data():
@@ -182,9 +213,10 @@ def create_character_data():
             writer.writerow(
                 ["magic", "magic_level", "exp", "current_exp", "next_exp"]
             )  # Write header
-            writer.writerow([CHARACTER_NAME])  # Write character name
+            writer.writerow([CHARACTER_NAME, SESSION_XP])  # Write character name
             writer.writerows(DEFAULT_CHAR_DATA)  # Write default character data
     return path
+
 
 def create_new_character_data():
     global CHARACTER_NAME
@@ -194,7 +226,7 @@ def create_new_character_data():
         if messagebox.askyesno("Create New Character Data", "Edit new character data?"):
             path = create_character_data()
             # Open edit window
-            edit_character_data()
+            save_character_data(name=CHARACTER_NAME)
             if path:
                 refresh_ui()  # Refresh the UI to show the new character data
         else:
@@ -208,11 +240,16 @@ def create_magic_buttons():
     global selected_magic_index  # Keep track of the selected magic button index
     selected_magic_index = None
 
-    path = get_character_data_path()
+    # Load character list and load the data from the first
+    if CHARACTER_NAME == "Default":
+        char_list = load_char_list()
 
-    char_data = load_character_data(path)
-
-    character_name_label.config(text=f"{CHARACTER_NAME}") # Update character name label
+        char_data = load_character_data(
+            character_name=char_list[0]
+        )  # Load character data
+    else:
+        char_data = load_character_data(character_name=CHARACTER_NAME)
+    character_name_label.config(text=f"{CHARACTER_NAME}")  # Update character name label
 
     # Clear previous magic buttons, if any
     for button in magic_buttons:
@@ -246,6 +283,62 @@ def create_magic_buttons():
         magic_buttons.append(magic_button)  # Store reference to the button
 
     update_window_size()  # Update the window size based on the number of magic buttons
+
+
+def char_list_buttons(last_button=11):
+    char_list = load_char_list()  # Load available character names
+    char_list_window = tk.Toplevel(root)
+    char_list_window.title("Character List")
+    char_list_window.geometry("300x400")
+    char_list_window.configure(bg=bg_color)
+
+    tk.Label(
+        char_list_window,
+        text="Select a Character",
+        bg=bg_color,
+        fg=fg_color,
+        font=dnd_font,
+    ).pack(pady=10)
+
+    # Create new character data button
+    new_char_button = tk.Button(
+        char_list_window,
+        text="New Character",
+        command=create_new_character_data,
+        bg=button_color,
+        fg=bg_color,
+    )
+
+    for char in char_list:
+        char_button = tk.Button(
+            char_list_window,
+            text=char.capitalize(),
+            command=lambda char=char: select_character(char, char_list_window),
+            bg=button_color,
+            fg=bg_color,
+            font=dnd_font,
+        )
+        char_button.pack(fill=tk.X, padx=10, pady=5)
+
+    new_char_button.pack(pady=10)
+
+
+def select_character(character_name, window):
+    """
+    Handle character selection, load data, and refresh UI.
+    """
+    window.destroy()  # Close the character list window
+    load_character_data(character_name=character_name)  # Load character data
+    create_magic_buttons()  # Refresh magic buttons
+    character_name_label.config(text=f"{CHARACTER_NAME}")  # Update UI
+    session_xp_label.config(text=f"Session XP: {SESSION_XP}")
+
+
+def load_and_close(char, window):
+    """Load the selected character's data and close the character list window."""
+    load_character_data(character_name=char)  # Load the selected character's data
+    refresh_ui()  # Refresh the main UI
+    window.destroy()  # Close the character list window
 
 
 # Function to load magic data into input fields and highlight the button
@@ -289,6 +382,7 @@ def refresh_ui():
     for button in magic_buttons:
         button.destroy()
     magic_buttons.clear()
+    session_xp_label.config(text=f"Session XP: {SESSION_XP}")
 
     # Recreate the magic buttons
     create_magic_buttons()
@@ -299,15 +393,16 @@ def update_window_size():
     num_buttons = len(magic_buttons)
     button_height = 40  # Height of each button
     # Calculate total height (accounting for padding)
-    new_height = 400 if num_buttons == 0 else 20 + (num_buttons * button_height)
-    if new_height < 400: # Minimum height
-        new_height = 400
+    new_height = 490 if num_buttons == 0 else 90 + (num_buttons * button_height)
     root.geometry(f"425x{new_height}")
 
 
 # Edit Character Data button
-def edit_character_data():
-    char_data = load_character_data()
+def edit_character_data(character=None):
+    if character:
+        char_data = load_character_data(character_name=character)
+    else:
+        char_data = load_character_data()
 
     # Create a new window for editing character data
     edit_window = tk.Toplevel(root)
@@ -420,6 +515,21 @@ last_xp_label = tk.Label(
 )
 last_xp_label.grid(row=5, column=1, sticky="w", pady=5)
 
+session_xp_label = tk.Label(
+    main_frame, text="Session XP: ", bg=bg_color, fg=fg_color, font=dnd_font
+)
+session_xp_label.grid(row=6, column=1, sticky="w", pady=5)
+
+reset_session_xp_button = tk.Button(
+    main_frame,
+    text="Reset Session XP",
+    command=lambda: reset_session_xp,
+    bg=button_color,
+    fg=bg_color,
+)
+
+reset_session_xp_button.grid(row=6, column=2, sticky="w", padx=5)
+
 last_xp_value = tk.Label(main_frame, text="", bg=bg_color, fg=fg_color, font=dnd_font)
 last_xp_value.grid(row=5, column=2, sticky="w", pady=5)
 
@@ -431,7 +541,7 @@ calculate_button = tk.Button(
     bg=button_color,
     fg=bg_color,
 )
-calculate_button.grid(row=6, column=1, pady=5)
+calculate_button.grid(row=7, column=1, pady=5)
 
 # Save button for saving calculated XP to the selected magic
 # Save XP button
@@ -440,7 +550,7 @@ calculate_button.grid(row=6, column=1, pady=5)
 reset_button = tk.Button(
     main_frame, text="Reset", command=reset_fields, bg=button_color, fg=bg_color
 )
-reset_button.grid(row=6, column=2, pady=5)
+reset_button.grid(row=7, column=2, pady=5)
 
 multiplier_button = tk.Button(
     main_frame,
@@ -449,7 +559,7 @@ multiplier_button = tk.Button(
     bg=button_color,
     fg=bg_color,
 )
-multiplier_button.grid(row=7, column=1, columnspan=2, pady=5)
+multiplier_button.grid(row=8, column=1, columnspan=2, pady=5)
 
 # Create magic buttons dynamically based on CSV data
 create_magic_buttons()
@@ -462,7 +572,7 @@ edit_button = tk.Button(
     bg=button_color,
     fg=bg_color,
 )
-edit_button.grid(row=8, column=1, columnspan=2, padx=5, pady=5)
+edit_button.grid(row=9, column=1, columnspan=2, padx=5, pady=5)
 
 # Save XP button
 save_xp_button = tk.Button(
@@ -472,7 +582,17 @@ save_xp_button = tk.Button(
     bg=button_color,
     fg=bg_color,
 )
-save_xp_button.grid(row=9, column=1, columnspan=2, pady=5)
+save_xp_button.grid(row=10, column=1, columnspan=2, pady=5)
+
+# Character lists buttons
+char_list_button = tk.Button(
+    main_frame,
+    text="Character List",
+    command=char_list_buttons,
+    bg=button_color,
+    fg=bg_color,
+)
+char_list_button.grid(row=11, column=0, columnspan=1, pady=0)
 
 # Initialize the main window
 root.mainloop()
