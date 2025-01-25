@@ -199,6 +199,7 @@ def save_character_data(data, name=CHARACTER_NAME):
         writer.writerows(data)  # Write default or updated character data
 
 
+
 def create_character_data():
     # Create a new character data file
     path = filedialog.asksaveasfilename(
@@ -437,6 +438,7 @@ def edit_character_data(character=None):
     save_button.pack(pady=5)
 
 
+
 root = tk.Tk()
 root.title("D&D XP Calculator")
 
@@ -542,9 +544,6 @@ calculate_button = tk.Button(
     fg=bg_color,
 )
 calculate_button.grid(row=7, column=1, pady=5)
-
-# Save button for saving calculated XP to the selected magic
-# Save XP button
 
 
 reset_button = tk.Button(
