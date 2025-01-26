@@ -1,0 +1,30 @@
+Dual Strike,3,WEAPON,2
+Dodge,3
+Heal,3
+Holy Sword,3,LIGHT,1,2
+Arrow of Light,3,LIGHT
+Flash,3
+Hell Spider,3,FIRE
+Purifying Wall,3,FIRE
+Divine Slash,3,WEAPON,1,1
+Sunshine Blessing,3,LIGHT,1,999
+Cruel Sun,3,FIRE,1,1
+Water Ball,3,WATER,1,1
+Sword with Light,3,LIGHT,1,999
+Elemental Transform,3,RADIANT,1,999
+[Pets]
+-Storm-
+Storm Light Spear,3,PET
+Storm Heal,3,PET
+[Rhitta]
+Heavy Impact,5,WEAPON,1,1
+[Souls]
+-Solaris-
+Solar Ray,5,SOUL
+Cry for Revenge,5,SOUL
+Shield Bash,5
+Shield Wall,5
+{Bonus}
+{LIGHT},30
+{RADIANT},30
+{FIRE},36
