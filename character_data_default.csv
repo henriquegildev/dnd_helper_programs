@@ -1,0 +1,11 @@
+Default,0,False
+magic,magic_level,exp,current_exp,next_exp
+CHAR,25,19,250
+RADIANT,8,10,10
+FIRE,10,97,100
+LIGHT,16,11,160
+WATER,6,39,60
+ICE,6,12,60
+NATURE,1,0,10
+BLACKSMITH,20,198,200
+MAGIC SMITH,9,8,90
