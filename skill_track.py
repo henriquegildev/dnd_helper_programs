@@ -42,9 +42,11 @@ Todos:
 # Define initial skill list
 skills = []
 bonus = []
+equips = []
 skills_clean = []
 activated_skills = []
 magic_levels = {}
+equipped_weapon = {}
 
 # Character name
 CHARACTER_NAME = (
@@ -52,7 +54,7 @@ CHARACTER_NAME = (
 )
 
 # File to store the skills
-SKILL_FILE = f"skills_{CHARACTER_NAME.lower()}.csv"
+SKILL_FILE = f"skills/skills_{CHARACTER_NAME.lower()}.csv"
 
 # Magics
 MAGICS = [
@@ -72,10 +74,19 @@ MAGICS = [
     "CHAR",
 ]
 
+ARMAMENTS = ["WEAPON", "SHIELD", "ARMOR", "HELMET", "BOOTS", "GLOVES"]
+
 # Define colors
-bg_color = "#2C2F33"
-button_color = "#262626"
-fg_color = "#FFFFFF"
+if os.name == "posix":
+    bg_color = "#2C2F33"
+    button_color = "#262626"
+    fg_color = "#FFFFFF"
+    txt_color = "#FFFFFF"
+elif os.name == "nt":
+    bg_color = "#2C2F33"
+    button_color = "#FFFFFF"
+    fg_color = "#FFFFFF"
+    txt_color = "#FFFFFF"
 
 
 # Function to load skills from a file
@@ -474,6 +485,9 @@ def power_stacking():
     # Total damage
     total_damage = 0
 
+    # Total damage with weapon bonus
+    total_damage_weap = 0
+
     # Dictionary to keep track of the stacked elements
     stacked_elements = {magic: 0 for magic in magic_levels if magic in MAGICS}
 
@@ -545,8 +559,15 @@ def power_stacking():
     for activated_skill in activated_skills:
         if activated_skill["element"] == "WEAPON":
             # Add char damage to total damage
-            total_damage += magic_levels["CHAR"]
+            if equipped_weapon["element"] == "WEAPON":
+                total_damage_weap += equipped_weapon["damage"]
+            elif equipped_weapon["element"] in magic_levels:
+                total_damage_weap += magic_levels[equipped_weapon["element"]]
+            elif equipped_weapon["element"] == "CHAR":
+                total_damage += magic_levels["CHAR"]
             total_damage *= 2
+
+    total_damage_label_weap = total_damage + total_damage_weap
 
     row_offset = len(magic_levels) + 1
     # Display total damage
@@ -559,6 +580,20 @@ def power_stacking():
         fg=fg_color,
     )
     total_damage_label.grid(
+        row=row_offset + len(stacked_elements), column=3, padx=5, pady=1, sticky="w"
+    )
+
+    total_damage_var_weap = tk.StringVar(
+        value=f"Total DMG w/Weapon: {total_damage_weap}"
+    )
+    total_damage_label_weap = tk.Label(
+        main_frame,
+        textvariable=total_damage_var,
+        font=("Arial", 8),
+        bg=bg_color,
+        fg=fg_color,
+    )
+    total_damage_label_weap.grid(
         row=row_offset + len(stacked_elements), column=3, padx=5, pady=1, sticky="w"
     )
 
@@ -801,8 +836,11 @@ def save_edited_skills():
 def load_magic_levels():
     global CHARACTER_NAME
     global bonus
+    global equips
+    global equipped_weapon
     global magic_levels
-    file_path = f"character_data_{CHARACTER_NAME.lower()}.csv"
+    file_path = f"characters/character_data_{CHARACTER_NAME.lower()}.csv"
+    file_path_equips = f"characters/skills/equips_{CHARACTER_NAME.lower()}.csv"
     if os.path.exists(file_path):
         with open(file_path, mode="r") as file:
             reader = csv.reader(file)
@@ -810,8 +848,148 @@ def load_magic_levels():
             CHARACTER_NAME = char_data[0][0]  # Get the character name from the data
             for row in char_data[2:]:
                 magic_levels[row[0]] = int(row[1])
+    if os.path.exists(file_path_equips):
+        with open(file_path_equips, mode="r") as file:
+            reader = csv.reader(file)
+            char_data = list(reader)
+            for row in char_data[1:]:  # Skip the header
+                if row[0] in ARMAMENTS:
+                    equips.append(
+                        {
+                            "type": row[0],
+                            "name": row[1],
+                            "element": row[2],
+                            "multiplier": row[3],
+                            "damage": row[4],
+                            "equipped": row[5],
+                        }
+                    )
+                    if row[5] == "True":
+                        equipped_weapon = equips[-1]
 
     return magic_levels
+
+
+def select_weapon():
+    global equipped_weapon
+    # Get equips
+    weapons = [equip for equip in equips if equip["type"] == "WEAPON"]
+    shields = [equip for equip in equips if equip["type"] == "SHIELD"]
+    # Open window
+    equips_window = tk.Toplevel(root)
+    equips_window.title("Select Equips")
+    equips_window.geometry("300x400")
+    equips_window.configure(bg=bg_color)
+
+    # Weapon
+    weapon_label = tk.Label(
+        equips_window,
+        text="Select Weapon:",
+        bg=bg_color,
+        fg=fg_color,
+    )
+    weapon_label.pack(pady=10)
+
+    weapon_var = tk.StringVar(value="Select Weapon")
+    weapon_menu = tk.OptionMenu(equips_window, weapon_var, *weapons)
+    weapon_menu.pack(pady=10)
+
+    # Shield
+    if shields:
+        shield_label = tk.Label(
+            equips_window,
+            text="Select Shield:",
+            bg=bg_color,
+            fg=fg_color,
+        )
+        shield_label.pack(pady=10)
+
+        shield_var = tk.StringVar(value="Select Shield")
+        shield_menu = tk.OptionMenu(equips_window, shield_var, *shields)
+        shield_menu.pack(pady=10)
+
+    # Button to apply the equips
+    apply_button = tk.Button(
+        equips_window,
+        text="Apply",
+        command=lambda: apply_equips(weapon_var.get(), shield_var.get(), equips_window),
+        bg=button_color,
+        fg=fg_color,
+    )
+    apply_button.pack(pady=1)
+
+
+def apply_equips(weapon, shield, equips_window):
+    global equipped_weapon
+    if weapon:
+        equipped_weapon = weapon
+    if shield:
+        equipped_weapon = shield
+
+    equips_window.destroy()
+
+
+def save_equips():
+    global equips
+    global CHARACTER_NAME
+    file_path_equips = f"equips_{CHARACTER_NAME.lower()}.csv"
+    with open(file_path_equips, mode="w") as file:
+        writer = csv.writer(file)
+        writer.writerow(["type", "name", "element", "multiplier", "damage", "equipped"])
+        for equip in equips:
+            writer.writerow(
+                [
+                    equip["type"],
+                    equip["name"],
+                    equip["element"],
+                    equip["multiplier"],
+                    equip["damage"],
+                    equip["equipped"],
+                ]
+            )
+
+
+def weapon_load():
+    global equipped_weapon
+    global equips
+    global magic_levels
+    start_row = len(magic_levels) + 16
+
+    if magic_levels[equipped_weapon["element"]] in magic_levels:
+        equip_weapon_text = "{0}\nDMG: {1}".format(
+            equipped_weapon["name"],
+            equipped_weapon["damage"],
+        )
+    elif equipped_weapon["element"] == "CHAR":
+        equip_weapon_text = "{0}\nDMG: {1}".format(
+            equipped_weapon["name"],
+            magic_levels["CHAR"],
+        )
+    else:
+        equip_weapon_text = "{0}\nDMG: {1}".format(
+            equipped_weapon["name"],
+            equipped_weapon["element"],
+        )
+    # Button to select weapon
+    weapon_button = tk.Button(
+        main_frame,
+        text="Select Weapon",
+        command=select_weapon,
+        font=("Arial", 8),
+        bg=button_color,
+        fg=bg_color,
+    )
+    weapon_button.grid(row=start_row + 6, column=2, padx=5, pady=1, sticky="ew")
+
+    # Label to display equipped weapon
+    weapon_label = tk.Label(
+        main_frame,
+        text=f"Weapon:\n{equip_weapon_text}",
+        font=("Arial", 10),
+        bg=bg_color,
+        fg=fg_color,
+    )
+    weapon_label.grid(row=start_row + 5, column=2, padx=5, pady=1, sticky="ew")
 
 
 def magic_apply_bonus():
@@ -850,6 +1028,9 @@ magic_apply_bonus()
 
 # Apply buff stacking
 buff_stacking()
+
+# Weapon load
+weapon_load()
 
 # Start the application loop
 root.mainloop()

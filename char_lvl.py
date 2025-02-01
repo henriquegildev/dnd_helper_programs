@@ -51,7 +51,7 @@ def update_last_loaded_flag(current_character_name):
     char_list = load_char_list()  # Load available character names
     for char in char_list:
         if char.lower() != current_character_name.lower():
-            file_path = f"character_data_{char.lower()}.csv"
+            file_path = f"characters/character_data_{char.lower()}.csv"
             if os.path.exists(file_path):
                 with open(file_path, mode="r") as file:
                     reader = csv.reader(file)
@@ -224,11 +224,11 @@ def load_character_data(path=None, character_name=None, skip_session_xp=False):
     global SESSION_XP
     if character_name:
         CHARACTER_NAME = character_name
-        file_path = f"character_data_{character_name.lower()}.csv"
+        file_path = f"characters/character_data_{character_name.lower()}.csv"
     elif path:
         file_path = path
     else:
-        file_path = "character_data_default.csv"  # Default file
+        file_path = "characters/character_data_default.csv"  # Default file
 
     if os.path.exists(file_path):
         with open(file_path, mode="r") as file:
@@ -259,7 +259,7 @@ def load_char_list():
     Return a list of character names based on available CSV files.
     """
     char_list = []
-    for file in os.listdir():
+    for file in os.listdir("characters"):
         if file.startswith("character_data_") and file.endswith(".csv"):
             char_name = file.replace("character_data_", "").replace(".csv", "")
             char_list.append(char_name)
@@ -271,7 +271,9 @@ def load_char_list():
 def save_character_data(data, name=CHARACTER_NAME, last_loaded=False):
     global CHARACTER_NAME
     global SESSION_XP
-    with open(f"character_data_{name.lower()}.csv", mode="w", newline="") as file:
+    with open(
+        f"characters/character_data_{name.lower()}.csv", mode="w", newline=""
+    ) as file:
         writer = csv.writer(file)
         writer.writerow(
             [name, SESSION_XP, last_loaded]
@@ -353,7 +355,7 @@ def create_magic_buttons():
     char_list = load_char_list()
     last_loaded_character = None
     for char in char_list:
-        file_path = f"character_data_{char.lower()}.csv"
+        file_path = f"characters/character_data_{char.lower()}.csv"
         if os.path.exists(file_path):
             with open(file_path, mode="r") as file:
                 reader = csv.reader(file)
@@ -566,15 +568,51 @@ def edit_character_data(character=None):
     save_button.pack(pady=5)
 
 
+def check_for_folders_and_files():
+    if not os.path.exists("characters"):
+        # Ask to create the characters folder, throw error if not
+        if not messagebox.askyesno(
+            "Folder Not Found",
+            "The characters folder was not found. Would you like to create it?",
+        ):
+            messagebox.showerror(
+                "Folder Not Found", "The characters folder was not found. Exiting."
+            )
+            root.destroy()
+            exit()
+        os.makedirs("characters")
+        # Create a default character data file
+        with open(
+            "characters/character_data_default.csv", mode="w", newline=""
+        ) as file:
+            writer = csv.writer(file)
+            writer.writerow(["Default", 0, True])
+            writer.writerow(["magic", "magic_level", "exp", "current_exp", "next_exp"])
+            writer.writerows(DEFAULT_CHAR_MAGICS)
+    elif not os.path.exists("characters/skills"):
+        os.makedirs("characters/skills")
+
+
 root = tk.Tk()
 root.title("D&D XP Calculator")
 root.geometry("800x600")  # Set initial window size
 
+check_for_folders_and_files()
+
 # Colors
 # White: #FFFFFF
-bg_color = "#2C2F33"
-button_color = "#262626"
-fg_color = "#FFFFFF"
+# if os is windows:
+# if os is mac:
+if os.name == "posix":
+    bg_color = "#2C2F33"
+    button_color = "#262626"
+    fg_color = "#FFFFFF"
+    txt_color = "#FFFFFF"
+elif os.name == "nt":
+    bg_color = "#2C2F33"
+    button_color = "#FFFFFF"
+    fg_color = "#FFFFFF"
+    txt_color = "#FFFFFF"
 
 # Custom font
 dnd_font = tkFont.Font(family="Helvetica", size=12)
@@ -611,6 +649,7 @@ current_xp_entry = tk.Entry(
     highlightbackground=fg_color,
     highlightcolor=fg_color,
     highlightthickness=1,
+    fg=txt_color,
 )
 current_xp_entry.grid(row=0, column=2, sticky="ew", pady=5)
 
@@ -623,8 +662,9 @@ current_level_entry = tk.Entry(
     bg=bg_color,
     font=dnd_font,
     highlightbackground=fg_color,
-    highlightcolor=fg_color,
+    highlightcolor=txt_color,
     highlightthickness=1,
+    fg=txt_color,
 )
 current_level_entry.grid(row=1, column=2, sticky="ew", pady=5)
 
@@ -637,8 +677,9 @@ gained_xp_entry = tk.Entry(
     bg=bg_color,
     font=dnd_font,
     highlightbackground=fg_color,
-    highlightcolor=fg_color,
+    highlightcolor=txt_color,
     highlightthickness=1,
+    fg=txt_color,
 )
 gained_xp_entry.grid(row=2, column=2, sticky="ew", pady=5)
 
