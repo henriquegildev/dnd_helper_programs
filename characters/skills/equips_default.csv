@@ -1,0 +1,4 @@
+type,name,element,multiplier,damage,equipped
+WEAPON,Rhitta,CHAR,1,0,True
+SHIELD,Mighty Shield,WEAPON,1,50,False
+WEAPON,Dark Steel Sword,WEAPON,1,50,False
